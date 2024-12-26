@@ -1,7 +1,8 @@
 from flask import Flask, request, render_template
 import pickle
 import numpy as np
-from sqlalchemy import SQLAlchemy
+import pandas as pd
+from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 
@@ -34,12 +35,41 @@ def predict():
     return render_template("model_farhan.html")
 
 @app.route("/predictFarhan",methods=['GET','POST'])
-def predict():
-    return render_template("model_farhan.html")
+def predictfarhan():
+    if request.method == 'POST':
+        # Ambil data dari form
+        HbA1c = float(request.form['HbA1c'])
+        BMI = float(request.form['BMI'])
+        Age = int(request.form['Age'])
+        Triglycerides = float(request.form['Triglycerides'])
+        Cholesterol = float(request.form['Cholesterol'])
+        Gender = request.form['Gender']
+
+        # Proses prediksi dengan model
+        input_data = pd.DataFrame([[HbA1c, BMI, Age, Triglycerides, Cholesterol, Gender]], 
+                                  columns=['HbA1c', 'BMI', 'Age', 'Triglycerides', 'Cholesterol', 'Gender'])
+        prediction = model.predict(input_data)[0]
+
+        # Simpan data ke database
+        new_data = TA(
+            HbA1c=HbA1c,
+            BMI=BMI,
+            Age=Age,
+            Triglycerides=Triglycerides,
+            Cholesterol=Cholesterol,
+            Gender=Gender,
+            Prediction=prediction
+        )
+        db.session.add(new_data)
+        db.session.commit()
+
+    return render_template("model_farhan.html",prediction=prediction)
 
 @app.route("/predictAbid")
 def prediction():
     return render_template("model_abid.html")
 
 if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
     app.run(host='0.0.0.0', debug=True)
